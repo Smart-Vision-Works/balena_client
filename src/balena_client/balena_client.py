@@ -89,7 +89,14 @@ class BalenaClient:
             "cpu_id": "000000008f7c4857",
             "is_undervolted": false,
             "logs_channel": null,
-            "vpn_address": null
+            "vpn_address": null,
+            "device_tags": {
+                "Customer": "Mart",
+                "Location": "Robot 02",
+                "Plant": "Rupert"
+            }
+        }
+
           },
         """
         # TODO: document this function and point to json files

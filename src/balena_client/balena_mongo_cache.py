@@ -8,6 +8,7 @@ from pprint import pprint
 import json
 import requests
 from platformdirs import user_cache_dir
+import pickle
 
 storage_location = user_cache_dir('balena_client')
 
@@ -80,48 +81,42 @@ class BalenaMongoCache:
                         device["device_tags"] = {}
                     device["device_tags"][device_tag["tag_key"]] = device_tag["value"]
                     break
-        
-    def _update_last_refresh_time(self, collection):
-        self.meta_collection.update_one(
-            {"meta_key": "last_refresh_time", "collection": collection}, 
-            {"$set": {"value": datetime.now()}},
-            upsert=True
-        )
+
+    def _update_last_refresh_time(self, collection: str, fleet=None):
+        if fleet is not None:
+            self.meta_collection.update_one(
+                {"meta_key": "last_refresh_time", "collection": collection, "fleet": fleet},
+                {"$set": {"value": datetime.now()}},
+                upsert=True
+            )
+        else:
+            self.meta_collection.update_one(
+                {"meta_key": "last_refresh_time", "collection": collection},
+                {"$set": {"value": datetime.now()}},
+                upsert=True
+            )
 
     def _refresh_applications(self):
-        print("Refreshing applications...")
         applications = self.balena.models.application.get_all()
+
         self.applications_collection.drop()
         self.applications_collection.insert_many(applications)
         self._update_last_refresh_time("applications")
 
     def _refresh_devices(self):
-        print("Refreshing devices...")
-        import time
-        t1 = time.time()
         devices = self.balena.models.device.get_all()
-        t2 = time.time()
         device_tags = self.balena.models.device.tags.get_all()
-        t3 = time.time()
+
         self.__add_device_tags(devices, device_tags)
-        t4 = time.time()
 
         self.devices_collection.drop()
-        t5 = time.time()
         self.devices_collection.insert_many(devices)
-        t6 = time.time()
         self._update_last_refresh_time("devices")
-        print('Time to get devices:', t2-t1)
-        print('Time to get device tags:', t3-t2)
-        print('Time to add device tags:', t4-t3)
-        print('Time to delete devices:', t5-t4)
-        print('Time to insert devices:', t6-t5)
         
     def _refresh_releases(self, fleet):
         '''
         Since the API calls for getting releases are slower, we require that the fleet is specified
         '''
-        print("Refreshing releases...")
 
         # Check if fleet is specified
         if fleet is None:
@@ -134,7 +129,6 @@ class BalenaMongoCache:
                 "$select": ["id","commit","created_at","belongs_to__application","is_invalided","known_issue_list","notes","release_version","revision","semver_build","semver_major","semver_minor","semver_patch","status"]
         }
         releases = self.balena.models.release.get_all_by_application(application_slug, options)
-
         release_tags = self.balena.models.release.tags.get_all_by_application(application_slug)
         self._add_release_tags(releases, release_tags)
 
@@ -143,7 +137,7 @@ class BalenaMongoCache:
         self.release_collection.insert_many(releases)
 
         #self.release_collection.insert_many(releases)
-        self._update_last_refresh_time("releases")
+        self._update_last_refresh_time("releases", fleet)
         return releases
 
 
@@ -169,7 +163,10 @@ class BalenaMongoCache:
         last_refresh_time = meta_info["value"]
         return datetime.now() - last_refresh_time >= self.refresh_interval
 
-    def find(self, collection: str, query: Dict[str, Any], projection: Dict[str, Any], bypass_cache=False, fleet=None):
+    def find(self, collection: str, query: Dict[str, Any], projection: Dict[str, Any]={}, bypass_cache=False, fleet=None):
+        # Make sure that we only specify the fleet if the collection is releases
+        if collection != "releases" and fleet is not None:
+            raise ValueError("Fleet should only be specified for releases collection.")
         if self._is_refresh_needed(collection) or bypass_cache:
             self.refresh_data(collection, fleet)
         

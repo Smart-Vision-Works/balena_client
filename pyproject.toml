@@ -28,3 +28,12 @@ dev = [
     "ipython>=8.22.2",
     "ipdb>=0.13.13",
 ]
+test = [
+    "pytest>=8.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = "src/balena_client"
+addopts = [
+    "--import-mode=importlib",
+]

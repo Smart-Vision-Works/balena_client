@@ -1,0 +1,30 @@
+[project]
+name = "balena_client"
+version = "0.1.0"
+description = "Robust wrapper to the Balena python SDK that can be used by Smart Vision Works developers"
+authors = [
+    {name = "Kirt Lillywhite", email = "kirt@smartvisionworks.com"},
+]
+dependencies = [
+    "balena-sdk==14.4.1",
+    "python-dotenv>=1.0.1",
+    "monty @ git+https://github.com/Smart-Vision-Works/montydb",
+    "platformdirs>=4.2.0",
+]
+requires-python = ">=3.10"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "ipython>=8.22.2",
+    "ipdb>=0.13.13",
+]

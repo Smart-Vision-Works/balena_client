@@ -3,12 +3,43 @@ import json
 from balena_mongo_cache import BalenaMongoCache
 from pprint import pprint
 from typing import Any, Dict
+from balena import Balena
+import os
 
 
 class BalenaClient:
     def __init__(self, cache_duration=60):
         # Load environment variables from .env file if it exists
-        self.mongo_cache = BalenaMongoCache(refresh_interval_seconds=cache_duration)
+        self.setup_balena_client()
+        self.mongo_cache = BalenaMongoCache(self.balena, cache_duration)
+
+    def setup_balena_client(self):
+        # Set up the Balena client
+        self.balena = Balena({
+            "api_version": "v6",
+            "retry_rate_limited_request":True})
+        self.auth_token = self.load_auth_token()
+        if self.auth_token:
+            self.balena.auth.login_with_token(self.auth_token)
+        else:
+            raise ValueError("Balena Authentication Token not found.")
+
+        logged_in = self.balena.auth.is_logged_in()
+        if not logged_in:
+            raise ValueError("Token didn't allow us to log in to balena.")
+
+    @staticmethod
+    def load_auth_token():
+        """Load the Balena Auth Token from environment or file."""
+        token = os.getenv('BALENA_AUTH_TOKEN')
+        if token:
+            return token
+        token_file = Path.home() / '.balena/token'
+        if token_file.exists():
+            with open(token_file, 'r') as file:
+                token = file.read().strip()
+            return token
+        return None
 
     def preload_devices(self):
         ''' Preload devices from balena API '''
@@ -164,9 +195,18 @@ class BalenaClient:
         applications = self.mongo_cache.find('applications', query, projection, bypass_cache=bypass_cache)
         return applications
 
+    def enable_public_url(self, device_uuids: list):
+        for uuid in device_uuids:
+            self.balena.models.device.enable_device_url(uuid)
+
+    def disable_public_url(self, device_uuids: list):
+        for uuid in device_uuids:
+            self.balena.models.device.disable_device_url(uuid)
+
+
 if __name__ == "__main__":
     # Example on how to use the BalenaClient
-    client = BalenaClient(1000)
+    client = BalenaClient(10000)
 
     query = {"device_name":{"$regex": "SVW-CB.*"}}
     projection = {"device_name": 1, "uuid": 1, "is_online": 1, "device_tags": 1}
@@ -178,4 +218,8 @@ if __name__ == "__main__":
 
     releases = client.get_releases(fleet="FM_HUB_K1", query={"release_tags.version": "v1.0.10"})
     print(f'releases:\n{json.dumps(releases, indent=4)}')
+
+
+
+
 

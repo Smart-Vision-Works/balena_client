@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from balena_mongo_cache import BalenaMongoCache
+from balena_client import BalenaClient
 import pickle
 from tempfile import TemporaryDirectory
 from datetime import datetime, timedelta
@@ -10,7 +11,7 @@ from pprint import pprint
 
 @pytest.fixture
 def mock_balena():
-    with patch('balena_mongo_cache.Balena') as MockBalena:
+    with patch('balena_client.Balena') as MockBalena:
         # Mock the Balena instance and its methods as needed
         mock_instance = MockBalena.return_value
         mock_instance.auth.login_with_token.return_value = True
@@ -48,12 +49,13 @@ def temporary_storage_location(monkeypatch):
 @pytest.fixture
 def balena_cache(mock_balena, temporary_storage_location):
     # Inject the mocked Balena instance into your class constructor if necessary
-    cache = BalenaMongoCache(refresh_interval_seconds=2)
+    cache = BalenaMongoCache(mock_balena, refresh_interval_seconds=2)
     return cache
 
 @pytest.fixture
 def balena_cache_without_balena_mock(temporary_storage_location):
-    cache = BalenaMongoCache(refresh_interval_seconds=2)
+    balena_client = BalenaClient()
+    cache = BalenaMongoCache(balena_client.balena, refresh_interval_seconds=2)
     return cache
 
 # Test release tags without the mock_balena fixture. Could break if the data on Balena changes
@@ -74,12 +76,6 @@ def test_release_tags_limited(balena_cache, mock_balena, temporary_storage_locat
 
     # Assert that the number of documents returned by find is right
     assert len(result) == 1
-
-# Test that I get a ValueError if I don't have a valid auth token
-@patch.dict('os.environ', {'BALENA_AUTH_TOKEN': 'garbarge'})
-def test_no_auth_token():
-    with pytest.raises(ValueError):
-        BalenaMongoCache(refresh_interval_seconds=2)
 
 # Test find with devices collection can find device with device tags
 def test_find_devices(balena_cache, mock_balena, temporary_storage_location):

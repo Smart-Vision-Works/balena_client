@@ -2,13 +2,13 @@ from montydb import set_storage, MontyClient
 from datetime import datetime, timedelta
 from typing import Any, Dict
 from dotenv import load_dotenv
-from balena import Balena
 import os
 from pprint import pprint
 import json
 import requests
 from platformdirs import user_cache_dir
 import pickle
+from balena import Balena
 
 storage_location = user_cache_dir('balena_client')
 
@@ -20,8 +20,10 @@ set_storage(
 )
 
 class BalenaMongoCache:
-    def __init__(self, refresh_interval_seconds: int):
+    def __init__(self, balena_sdk, refresh_interval_seconds: int):
         load_dotenv()
+        self.refresh_interval = timedelta(seconds=refresh_interval_seconds)
+        self.balena = balena_sdk
 
         # Set up the MontyDB client
         self.client = MontyClient(storage_location)
@@ -30,35 +32,6 @@ class BalenaMongoCache:
         self.applications_collection = self.db["applications"]
         self.release_collection = self.db["releases"]
         self.meta_collection = self.db["meta"]  # A special collection for metadata
-        
-        self.refresh_interval = timedelta(seconds=refresh_interval_seconds)
-
-        # Set up the Balena client
-        self.balena = Balena({
-            "api_version": "v6",
-            "retry_rate_limited_request":True})
-        self.auth_token = self.load_auth_token()
-        if self.auth_token:
-            self.balena.auth.login_with_token(self.auth_token)
-        else:
-            raise ValueError("Balena Authentication Token not found.")
-
-        logged_in = self.balena.auth.is_logged_in()
-        if not logged_in:
-            raise ValueError("Token didn't allow us to log in to balena.")
-
-    @staticmethod
-    def load_auth_token():
-        """Load the Balena Auth Token from environment or file."""
-        token = os.getenv('BALENA_AUTH_TOKEN')
-        if token:
-            return token
-        token_file = Path.home() / '.balena/token'
-        if token_file.exists():
-            with open(token_file, 'r') as file:
-                token = file.read().strip()
-            return token
-        return None
 
     def _add_release_tags(self, releases, release_tags):
         '''Add release tags to the releases'''

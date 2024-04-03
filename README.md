@@ -40,5 +40,5 @@ The scripts uses secrets for accessing balena. For development use a
 .env file with the secrets listed there. It will get loaded automatically if it exists.
 
 ```
-BALENA_AUTH_TOKEN=Gmh4v8ymkUdhgjGo32C2WBlUXfwdno0C
+BALENA_AUTH_TOKEN=GarbageymkUdhgjGo32C2WBlUXfwdno0C
 ```

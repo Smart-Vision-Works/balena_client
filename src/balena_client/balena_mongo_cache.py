@@ -71,18 +71,23 @@ class BalenaMongoCache:
                     release["release_tags"][release_tag["tag_key"]] = release_tag["value"]
                     break
 
-    def __add_device_tags(self, devices, device_tags):
+    def _add_device_tags(self, devices, device_tags):
         '''Add device tags to the devices'''
+        device_id_to_device = {device["id"]: device for device in devices}  # Create a mapping of device_id to device
         for device_tag in device_tags:
             device_id = device_tag["device"]["__id"]
-            for device in devices:
-                if device["id"] == device_id:
-                    if not "device_tags" in device:
-                        device["device_tags"] = {}
-                    device["device_tags"][device_tag["tag_key"]] = device_tag["value"]
-                    break
+            if device_id in device_id_to_device:
+                device = device_id_to_device[device_id]
+                # Ensure the device has a 'device_tags' dictionary
+                device_tags = device.setdefault("device_tags", {})
+                # Add the tag_key and value
+                device_tags[device_tag["tag_key"]] = device_tag["value"]
 
     def _update_last_refresh_time(self, collection: str, fleet=None):
+        '''Update the last refresh time for the collection.
+        This ensures that we can check if the data is stale, according to the refresh interval specified.
+        In the case of releases collection, we also need to specify the fleet.
+        '''
         if fleet is not None:
             self.meta_collection.update_one(
                 {"meta_key": "last_refresh_time", "collection": collection, "fleet": fleet},
@@ -97,6 +102,7 @@ class BalenaMongoCache:
             )
 
     def _refresh_applications(self):
+        ''' Refresh the applications collection '''
         applications = self.balena.models.application.get_all()
 
         self.applications_collection.drop()
@@ -104,10 +110,13 @@ class BalenaMongoCache:
         self._update_last_refresh_time("applications")
 
     def _refresh_devices(self):
+        ''' Refresh the devices collection
+        Add device tags to the devices, since we almost always want them
+        '''
         devices = self.balena.models.device.get_all()
         device_tags = self.balena.models.device.tags.get_all()
 
-        self.__add_device_tags(devices, device_tags)
+        self._add_device_tags(devices, device_tags)
 
         self.devices_collection.drop()
         self.devices_collection.insert_many(devices)
@@ -126,7 +135,9 @@ class BalenaMongoCache:
         application_slug = f"admin53/{fleet.lower()}"
 
         options = {
-                "$select": ["id","commit","created_at","belongs_to__application","is_invalided","known_issue_list","notes","release_version","revision","semver_build","semver_major","semver_minor","semver_patch","status"]
+                "$select": ["id","commit","created_at","belongs_to__application","is_invalided",
+                            "known_issue_list","notes","release_version","revision","semver_build",
+                            "semver_major","semver_minor","semver_patch","status"]
         }
         releases = self.balena.models.release.get_all_by_application(application_slug, options)
         release_tags = self.balena.models.release.tags.get_all_by_application(application_slug)

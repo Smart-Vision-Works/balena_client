@@ -22,7 +22,20 @@ This is made to be a more robust method to giving access to Balena for different
     releases = client.get_releases(fleet="FM_HUB_K1", query={"release_tags.version": "v1.0.10"})
 ```
 
-## Using secrets
+## Running the development environment
+PDM is used to manage the dependencies for this project. PDM sets up its own virtual environment and installs the dependencies in that environment. To run the development environment, run the following commands:
+
+```bash
+pdm install
+pdm run python src/balena_client/balena_client.py
+```
+By prepending pdm run before anything you want to run it ensures that the correct virtual environment is used. To run the tests, run the following command:
+
+```bash
+pdm run pytest
+```
+
+## Using secrets in development
 The scripts uses secrets for accessing balena. For development use a
 .env file with the secrets listed there. It will get loaded automatically if it exists.
 

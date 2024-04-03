@@ -5,6 +5,7 @@ import pickle
 from tempfile import TemporaryDirectory
 from datetime import datetime, timedelta
 import time
+from pprint import pprint
 
 
 @pytest.fixture
@@ -50,8 +51,38 @@ def balena_cache(mock_balena, temporary_storage_location):
     cache = BalenaMongoCache(refresh_interval_seconds=2)
     return cache
 
+@pytest.fixture
+def balena_cache_without_balena_mock(temporary_storage_location):
+    cache = BalenaMongoCache(refresh_interval_seconds=2)
+    return cache
+
+# Test release tags without the mock_balena fixture. Could break if the data on Balena changes
+def test_release_tags(balena_cache_without_balena_mock, temporary_storage_location):
+    query = {"release_tags.version": "1.11.10"}
+    result = balena_cache_without_balena_mock.find('releases', query, {"release_tags":1}, fleet="tater_sai")
+
+    assert len(result) == 1
+
+# Test release tags. Because of the way I mocked this and the pickled data, I only have the release info for one application
+def test_release_tags_limited(balena_cache, mock_balena, temporary_storage_location):
+    query = {"app_name": "FM_HUB_K1"}
+    projection = {"id": 1}
+    result = balena_cache.find('applications', query, projection)
+
+    query = {"belongs_to__application.__id": result[0]['id'], "release_tags.version": "v1.0.2"}
+    result = balena_cache.find('releases', query, {}, fleet="FM_HUB_K1")
+
+    # Assert that the number of documents returned by find is right
+    assert len(result) == 1
+
+# Test that I get a ValueError if I don't have a valid auth token
+@patch.dict('os.environ', {'BALENA_AUTH_TOKEN': 'garbarge'})
+def test_no_auth_token():
+    with pytest.raises(ValueError):
+        BalenaMongoCache(refresh_interval_seconds=2)
+
 # Test find with devices collection can find device with device tags
-def test_find_devices(balena_cache, mock_balena):
+def test_find_devices(balena_cache, mock_balena, temporary_storage_location):
     query = {"device_tags.Customer": "Wada"}
     result = balena_cache.find('devices', query)
 
@@ -59,7 +90,7 @@ def test_find_devices(balena_cache, mock_balena):
     assert len(result) == 67
 
 # Test that we can't do find with the devices collection if we specify a fleet
-def test_find_devices_fleet(balena_cache, mock_balena):
+def test_find_devices_fleet(balena_cache, mock_balena, temporary_storage_location):
     with pytest.raises(ValueError):
         balena_cache.find('devices', {}, {}, bypass_cache=False, fleet="tater_sai")
 

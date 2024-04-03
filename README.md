@@ -5,7 +5,7 @@ This is made to be a more robust method to giving access to Balena for different
 ## Features
 * Uses a configurable on-disk cache to store the balena data to speed up the use of the balena SDK. The first calls will take awhile but all subsequent calls will be fast. All calls have the option to bypass the cache.
 * Uses MontyDB as the cache, which allows us to search the balena data using mongo queries. More than 90% of other balena wrappers were functions to filter the API data in different ways. This greatly simplifies the interface
-* The package is published to the Smart Vision Works GitHub package registry and can be more easily integrated into other projects. You can use it in your project by pip install -e git+https://github.com/Smart-Vision-Works/balena_client.
+* The package is published to the Smart Vision Works GitHub package registry and can be more easily integrated into other projects. You can use it in your project by pip install -e git+https://github.com/Smart-Vision-Works/balena_client#egg=balena_client.
 * Dependencies for this python module are managed by PDM.
 * Gives the ability to preload balena data if you wanted to do it at program startup to speed up the use of the balena SDK. Best to make calls in a thread.
 

@@ -8,8 +8,8 @@ authors = [
 dependencies = [
     "balena-sdk==14.4.1",
     "python-dotenv>=1.0.1",
-    "monty @ git+https://github.com/Smart-Vision-Works/montydb",
     "platformdirs>=4.2.0",
+    "montydb @ git+https://github.com/Smart-Vision-Works/montydb.git@2.5.3",
 ]
 requires-python = ">=3.10"
 readme = "README.md"

@@ -5,7 +5,7 @@
 groups = ["default", "dev", "test"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:7b7124430c11f52f0d94c4dc9419b6c5e081b5720c101020355a36b914f187e8"
+content_hash = "sha256:0bb959ebe73196adb4a0f39990aa55731b274e788715f518c4de0cd27cd578c6"
 
 [[package]]
 name = "asttokens"
@@ -362,7 +362,7 @@ files = [
 
 [[package]]
 name = "ipython"
-version = "8.22.2"
+version = "8.23.0"
 requires_python = ">=3.10"
 summary = "IPython: Productive Interactive Computing"
 groups = ["dev"]
@@ -377,10 +377,11 @@ dependencies = [
     "pygments>=2.4.0",
     "stack-data",
     "traitlets>=5.13.0",
+    "typing-extensions; python_version < \"3.12\"",
 ]
 files = [
-    {file = "ipython-8.22.2-py3-none-any.whl", hash = "sha256:3c86f284c8f3d8f2b6c662f885c4889a91df7cd52056fd02b7d8d6195d7f56e9"},
-    {file = "ipython-8.22.2.tar.gz", hash = "sha256:2dcaad9049f9056f1fef63514f176c7d41f930daa78d05b82a176202818f2c14"},
+    {file = "ipython-8.23.0-py3-none-any.whl", hash = "sha256:07232af52a5ba146dc3372c7bf52a0f890a23edf38d77caef8d53f9cdc2584c1"},
+    {file = "ipython-8.23.0.tar.gz", hash = "sha256:7468edaf4f6de3e1b912e57f66c241e6fd3c7099f2ec2136e239e142e800274d"},
 ]
 
 [[package]]
@@ -412,10 +413,11 @@ files = [
 ]
 
 [[package]]
-name = "monty"
+name = "montydb"
 version = "99.dev0"
 requires_python = ">=3.7"
-git = "https://github.com/Smart-Vision-Works/montydb"
+git = "https://github.com/Smart-Vision-Works/montydb.git"
+ref = "2.5.3"
 revision = "66eab0ed2c366edebc968851be04473947ad1415"
 summary = "Monty, Mongo tinified. MongoDB implemented in Python !"
 groups = ["default"]
@@ -790,7 +792,7 @@ name = "typing-extensions"
 version = "4.10.0"
 requires_python = ">=3.8"
 summary = "Backported and Experimental Type Hints for Python 3.8+"
-groups = ["default"]
+groups = ["default", "dev"]
 files = [
     {file = "typing_extensions-4.10.0-py3-none-any.whl", hash = "sha256:69b1a937c3a517342112fb4c6df7e72fc39a38e7891a5730ed4985b5214b5475"},
     {file = "typing_extensions-4.10.0.tar.gz", hash = "sha256:b0abd7c89e8fb96f98db18d86106ff1d90ab692004eb746cf6eda2682f91b3cb"},

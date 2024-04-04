@@ -5,6 +5,29 @@ from pprint import pprint
 from typing import Any, Dict
 from balena import Balena
 import os
+import re
+
+'''
+BalenaClient is a class that wraps the Balena SDK and BalenaMongoCache to provide a more user-friendly interface to the Balena API.
+
+The BalenaClient class provides the following methods:
+- get_devices: Retrieve balena devices with optional filtering.
+- get_releases: Retrieve balena releases with optional filtering.
+- get_applications: Retrieve balena applications with optional filtering.
+- enable_public_url: Enable public URLs for devices.
+- disable_public_url: Disable public URLs for devices.
+- reboot_devices: Reboot devices.
+- update_device_to_release: Update devices to a specific release.
+- is_device_updated: Check if a device is updated to a specific release.
+- preload_devices: Preload devices from balena API.
+- preload_applications: Preload applications from balena API.
+- preload_releases: Preload releases from balena API.
+
+The BalenaClient class requires an authentication token to be set in the BALENA_AUTH_TOKEN environment variable or in a .balena/token file in the user's home directory.
+
+When adding additional methods to the BalenaClient class, used the cached data from BalenaMongoCache to avoid making unnecessary API calls, where it makes sense to do so.
+
+'''
 
 
 class BalenaClient:
@@ -203,6 +226,63 @@ class BalenaClient:
         for uuid in device_uuids:
             self.balena.models.device.disable_device_url(uuid)
 
+    def reboot_devices(self, device_uuids: list):
+        ''' Reboot devices by their uuids.
+        Is possible that the device won't remote if the update lock is on.
+        '''
+        for uuid in device_uuids:
+            self.balena.models.device.reboot(uuid)
+
+    def _get_release_id_from_identifier(self, fleet: str, release_identifier: str):
+        ''' Convert release commit, id, or version to release id. '''
+        commit_pattern = r'^[0-9a-f]{32}$'
+        id_pattern = r'^\d+$'
+        if re.match(commit_pattern, release_identifier):
+            releases = self.get_releases(fleet, {"commit": release_identifier}, {'id': 1})
+            if len(releases) != 1:
+                raise ValueError(f"Expected 1 release for commit {release}, got {len(releases)}")
+            release_id = releases[0]['id']
+        elif re.match(id_pattern, release_identifier):
+            release_id = release_identifier
+        else:
+            releases = self.get_releases(fleet, {"release_tags.version": release_identifier}, {'id': 1})
+            if len(releases) != 1:
+                raise ValueError(f"Expected 1 release for version {release}, got {len(releases)}")
+            release_id = releases[0]['id']
+
+        return release_id
+
+
+    def update_device_to_release(self, device_uuid: str, release_identifier: str):
+        ''' Update devices to a specific release.
+
+        Can specify the release by commit, id, or version, where version comes from the release tags.
+        '''
+        # Get fleet from the device so we can get the release_id from the release_identifier
+        application_id = self.get_devices({"uuid": device_uuid}, {"belongs_to__application.__id": 1})[0]['belongs_to__application']['__id']
+        fleet = self.get_applications({"id": application_id}, {"app_name": 1})[0]['app_name']
+
+        # Get the release_id from the release_identifier
+        release_id = self._get_release_id_from_identifier(fleet, release_identifier)
+
+        # Get the release id that the device is currently running
+        current_release_id = self.get_devices({"uuid": device_uuid}, {"should_be_running__release.__id": 1})[0]
+
+        # Update the device to the release
+        self.balena.models.device.pin_to_release(device_uuid, int(release_id))
+
+    def is_device_updated(self, device_uuid: str, release_identifier: str):
+        ''' Check if a device is updated to a specific release. '''
+        # Get fleet from the device so we can get the release_id from the release_identifier
+        application_id = self.get_devices({"uuid": device_uuid}, {"belongs_to__application.__id": 1})[0]['belongs_to__application']['__id']
+        fleet = self.get_applications({"id": application_id}, {"app_name": 1})[0]['app_name']
+
+        release_id = self._get_release_id_from_identifier(fleet, release_identifier)
+
+        # Makes sense to not use the cache here because we want to know the current state of the device
+        device = self.balena.models.device.get(device_uuid)
+        return device['is_running__release']['__id'] == release_id
+
 
 if __name__ == "__main__":
     # Example on how to use the BalenaClient
@@ -219,7 +299,15 @@ if __name__ == "__main__":
     releases = client.get_releases(fleet="FM_HUB_K1", query={"release_tags.version": "v1.0.10"})
     print(f'releases:\n{json.dumps(releases, indent=4)}')
 
+    ## Didn't want to put this in a test because it would reboot the device.
+    ##client.reboot_devices(["eb43ce84bad4a3f51c3eaba1a8e2ed8b"])
 
+    ## Didn't want to put this in a test because it will update a device
+    ##client.update_device_to_release("eb43ce84bad4a3f51c3eaba1a8e2ed8b", "1.11.10")
+
+    ## Check if the device is updated
+    ##print('client.is_device_updated("eb43ce84bad4a3f51c3eaba1a8e2ed8b", "f5a48b18902b2ecdf0bf70d7f94c2c30"))
+    ##print('device is updated:', client.is_device_updated("eb43ce84bad4a3f51c3eaba1a8e2ed8b", "1.11.10"))
 
 
 

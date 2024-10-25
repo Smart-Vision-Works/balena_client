@@ -1,6 +1,6 @@
 from pathlib import Path
 import json
-from balena_mongo_cache import BalenaMongoCache
+from .balena_mongo_cache import BalenaMongoCache
 from pprint import pprint
 from typing import Any, Dict
 from balena import Balena

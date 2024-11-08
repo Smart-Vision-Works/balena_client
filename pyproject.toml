@@ -6,7 +6,7 @@ authors = [
     {name = "Kirt Lillywhite", email = "kirt@smartvisionworks.com"},
 ]
 dependencies = [
-    "balena-sdk==14.4.1",
+    "balena-sdk>=14.4.1",
     "python-dotenv>=1.0.1",
     "platformdirs>=4.2.0",
     "montydb @ git+https://github.com/Smart-Vision-Works/montydb.git@2.5.3",

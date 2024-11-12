@@ -31,10 +31,10 @@ When adding additional methods to the BalenaClient class, used the cached data f
 
 
 class BalenaClient:
-    def __init__(self, cache_duration=60):
+    def __init__(self, cache_duration_seconds=3600):
         # Load environment variables from .env file if it exists
         self.setup_balena_client()
-        self.mongo_cache = BalenaMongoCache(self.balena, cache_duration)
+        self.mongo_cache = BalenaMongoCache(self.balena, cache_duration_seconds)
 
     def setup_balena_client(self):
         # Set up the Balena client

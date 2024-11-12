@@ -1,1 +1,1 @@
-from .balena_client import BalenaClient
+from .balena_client import BalenaClient, Balena

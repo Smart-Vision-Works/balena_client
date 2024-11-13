@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from balena_client import BalenaClient
+from balena_tools import BalenaClient
 
 @pytest.fixture
 def mock_cache():

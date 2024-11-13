@@ -2,15 +2,12 @@ from montydb import set_storage, MontyClient
 from datetime import datetime, timedelta
 from typing import Any, Dict
 from dotenv import load_dotenv
-import os
 from pprint import pprint
-import json
-import requests
 from platformdirs import user_cache_dir
-import pickle
 from balena import Balena
+import os
 
-storage_location = user_cache_dir('balena_client')
+storage_location = user_cache_dir('balena_tools')
 
 # Set the storage engine for MontyDB to use a file-based system
 set_storage(
@@ -32,6 +29,11 @@ class BalenaMongoCache:
         self.applications_collection = self.db["applications"]
         self.release_collection = self.db["releases"]
         self.meta_collection = self.db["meta"]  # A special collection for metadata
+
+        # Print out files stored in the storage location and their size
+        print("storage location:", storage_location)
+        for file in os.listdir(storage_location):
+            print(f"File: {file}, size: {os.path.getsize(os.path.join(storage_location, file))}")
 
     def _add_release_tags(self, releases, release_tags):
         '''Add release tags to the releases'''
@@ -120,7 +122,6 @@ class BalenaMongoCache:
         self.release_collection.drop()
         self.release_collection.insert_many(releases)
 
-        #self.release_collection.insert_many(releases)
         self._update_last_refresh_time("releases", fleet)
         return releases
 
@@ -151,7 +152,7 @@ class BalenaMongoCache:
         # Make sure that we only specify the fleet if the collection is releases
         if collection != "releases" and fleet is not None:
             raise ValueError("Fleet should only be specified for releases collection.")
-        if self._is_refresh_needed(collection) or bypass_cache:
+        if self._is_refresh_needed(collection, fleet) or bypass_cache:
             self.refresh_data(collection, fleet)
         
         projection["_id"] = 0

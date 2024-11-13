@@ -1,17 +1,15 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from balena_mongo_cache import BalenaMongoCache
-from balena_client import BalenaClient
+from unittest.mock import patch
+from balena_tools import BalenaMongoCache
+from balena_tools import BalenaClient
 import pickle
 from tempfile import TemporaryDirectory
 from datetime import datetime, timedelta
 import time
-from pprint import pprint
-
 
 @pytest.fixture
 def mock_balena():
-    with patch('balena_client.Balena') as MockBalena:
+    with patch('balena_tools.Balena') as MockBalena:
         # Mock the Balena instance and its methods as needed
         mock_instance = MockBalena.return_value
         mock_instance.auth.login_with_token.return_value = True
@@ -43,7 +41,7 @@ def temporary_storage_location(monkeypatch):
     # Create a temporary directory for the storage_location
     with TemporaryDirectory() as tmp_dir:
         # Use monkeypatch to temporarily replace the global variable
-        monkeypatch.setattr('balena_mongo_cache.storage_location', tmp_dir)
+        monkeypatch.setattr('balena_tools.balena_mongo_cache.storage_location', tmp_dir)
         yield tmp_dir  # yields the path to the temporary directory
 
 @pytest.fixture

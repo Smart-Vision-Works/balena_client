@@ -33,7 +33,7 @@ test = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = "src/balena_client"
+pythonpath = "src/balena_tools"
 addopts = [
     "--import-mode=importlib",
 ]

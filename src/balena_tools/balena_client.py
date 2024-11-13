@@ -29,6 +29,17 @@ When adding additional methods to the BalenaClient class, used the cached data f
 
 '''
 
+def auth_token():
+    """Load the Balena Auth Token from environment or file."""
+    token = os.getenv('BALENA_AUTH_TOKEN')
+    if token:
+        return token
+    token_file = Path.home() / '.balena/token'
+    if token_file.exists():
+        with open(token_file, 'r') as file:
+            token = file.read().strip()
+        return token
+    return None
 
 class BalenaClient:
     def __init__(self, cache_duration_seconds=3600):
@@ -36,33 +47,25 @@ class BalenaClient:
         self.setup_balena_client()
         self.mongo_cache = BalenaMongoCache(self.balena, cache_duration_seconds)
 
+    @property
+    def auth_token(self):
+        """Expose the auth token."""
+        return self._auth_token
+
     def setup_balena_client(self):
         # Set up the Balena client
         self.balena = Balena({
             "api_version": "v6",
             "retry_rate_limited_request":True})
-        self.auth_token = self.load_auth_token()
-        if self.auth_token:
-            self.balena.auth.login_with_token(self.auth_token)
+        self._auth_token = auth_token()
+        if self._auth_token:
+            self.balena.auth.login_with_token(self._auth_token)
         else:
             raise ValueError("Balena Authentication Token not found.")
 
         logged_in = self.balena.auth.is_logged_in()
         if not logged_in:
             raise ValueError("Token didn't allow us to log in to balena.")
-
-    @staticmethod
-    def load_auth_token():
-        """Load the Balena Auth Token from environment or file."""
-        token = os.getenv('BALENA_AUTH_TOKEN')
-        if token:
-            return token
-        token_file = Path.home() / '.balena/token'
-        if token_file.exists():
-            with open(token_file, 'r') as file:
-                token = file.read().strip()
-            return token
-        return None
 
     def preload_devices(self):
         ''' Preload devices from balena API '''

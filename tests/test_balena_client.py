@@ -52,7 +52,7 @@ def test_get_applications(balena_client, mock_cache):
 
 # Test that I get a ValueError if I don't have a valid auth token
 @patch.dict('os.environ', {'BALENA_AUTH_TOKEN': 'garbarge'})
-def test_no_auth_token():
+def test_no_auth_token(real_balena_client):
     with pytest.raises(ValueError):
         client = BalenaClient(1000)
 
@@ -73,3 +73,7 @@ def test_enable_disable_public_url(real_balena_client):
     devices = real_balena_client.get_devices({"uuid": "a12702b25756e03ead0e2f5f2d36ccae"}, bypass_cache=True)
     assert devices[0]["is_web_accessible"] == False
 
+# Test being able to grab the auth token that is exported as balena_auth_token
+def test_balena_auth_token(real_balena_client):
+    token = real_balena_client.auth_token
+    assert token is not None

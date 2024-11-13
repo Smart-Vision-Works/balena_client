@@ -30,11 +30,6 @@ class BalenaMongoCache:
         self.release_collection = self.db["releases"]
         self.meta_collection = self.db["meta"]  # A special collection for metadata
 
-        # Print out files stored in the storage location and their size
-        print("storage location:", storage_location)
-        for file in os.listdir(storage_location):
-            print(f"File: {file}, size: {os.path.getsize(os.path.join(storage_location, file))}")
-
     def _add_release_tags(self, releases, release_tags):
         '''Add release tags to the releases'''
         for release_tag in release_tags:

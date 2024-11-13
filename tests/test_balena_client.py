@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from balena_tools import BalenaClient
+from pprint import pprint
 
 @pytest.fixture
 def mock_cache():
@@ -77,3 +78,14 @@ def test_enable_disable_public_url(real_balena_client):
 def test_balena_auth_token(real_balena_client):
     token = real_balena_client.auth_token
     assert token is not None
+
+# Test function to check if a device is in local mode. All rikolto devices should be in local mode.
+def test_is_device_in_local_mode(real_balena_client):
+    # Get the first device that is online in the fleet FM_HUB_K1
+    devices = real_balena_client.get_devices({"is_online": True, 'belongs_to__application': {'__id': 1950585}}, {"uuid": 1, "device_name": 1, "device_tags": 1})
+    device_uuid = devices[0]['uuid']
+    is_in_local_mode = real_balena_client.is_device_in_local_mode(device_uuid)
+    if not is_in_local_mode:
+        print('device is not in local mode, but should be. Check the device on balena dashboard.')
+        pprint(devices[0])
+    assert real_balena_client.is_device_in_local_mode(device_uuid) == True

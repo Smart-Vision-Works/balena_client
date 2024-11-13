@@ -156,7 +156,6 @@ class BalenaClient:
 
           },
         """
-        # TODO: document this function and point to json files
         devices = self.mongo_cache.find('devices', query, projection, bypass_cache=bypass_cache)
         return devices
 
@@ -285,6 +284,10 @@ class BalenaClient:
         # Makes sense to not use the cache here because we want to know the current state of the device
         device = self.balena.models.device.get(device_uuid)
         return device['is_running__release']['__id'] == release_id
+
+    def is_device_in_local_mode(self, device_uuid_or_id: str):
+        ''' Check if a device is in local mode '''
+        return self.balena.models.device.is_in_local_mode(device_uuid_or_id)
 
 
 if __name__ == "__main__":

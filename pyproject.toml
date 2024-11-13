@@ -1,6 +1,6 @@
 [project]
 name = "balena_tools"
-version = "0.1.1"
+version = "0.1.2"
 description = "Robust wrapper to the Balena python SDK that can be used by Smart Vision Works developers"
 authors = [
     {name = "Kirt Lillywhite", email = "kirt@smartvisionworks.com"},

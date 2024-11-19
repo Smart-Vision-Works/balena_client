@@ -55,7 +55,7 @@ class BalenaClient:
     def setup_balena_client(self):
         # Set up the Balena client
         self.balena = Balena({
-            "api_version": "v6",
+            "api_version": "v7",
             "retry_rate_limited_request":True})
         self._auth_token = auth_token()
         if self._auth_token:
@@ -66,6 +66,7 @@ class BalenaClient:
         logged_in = self.balena.auth.is_logged_in()
         if not logged_in:
             raise ValueError("Token didn't allow us to log in to balena.")
+
 
     def preload_devices(self):
         ''' Preload devices from balena API '''
@@ -268,10 +269,26 @@ class BalenaClient:
         release_id = self._get_release_id_from_identifier(fleet, release_identifier)
 
         # Get the release id that the device is currently running
-        current_release_id = self.get_devices({"uuid": device_uuid}, {"should_be_running__release.__id": 1})[0]
+        current_release_id = self.get_devices({"uuid": device_uuid}, {"should_be_running__release.__id": 1})[0]['should_be_running__release']['__id']
 
-        # Update the device to the release
-        self.balena.models.device.pin_to_release(device_uuid, int(release_id))
+        if current_release_id == release_id:
+            return False, f"Already at {release_identifier}"
+
+        # Using the API because the SDK device pinning is not working: self.balena.models.device.pin_to_release(device_uuid, int(release_id))
+        # https://github.com/balena-io/balena-sdk-python/issues/374
+        import requests
+        url = f'https://api.balena-cloud.com/v7/device(uuid=\'{device_uuid}\')'
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.auth_token}'
+        }
+        data = {"is_pinned_on__release": int(release_id)}
+        response = requests.patch(url, headers=headers, data=json.dumps(data))
+        if response.status_code == 200:
+            return True, None
+        else:
+            print(f'response.json(): {response.json()}')
+            return False, response.json()
 
     def is_device_updated(self, device_uuid: str, release_identifier: str):
         ''' Check if a device is updated to a specific release. '''
@@ -283,7 +300,7 @@ class BalenaClient:
 
         # Makes sense to not use the cache here because we want to know the current state of the device
         device = self.balena.models.device.get(device_uuid)
-        return device['is_running__release']['__id'] == release_id
+        return device['is_running__release']['__id'] == int(release_id)
 
     def is_device_in_local_mode(self, device_uuid_or_id: str):
         ''' Check if a device is in local mode '''

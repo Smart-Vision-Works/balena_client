@@ -2,6 +2,9 @@
 
 This is made to be a more robust method to giving access to Balena for different python project that what we have done in the past at Smart Vision Works. It simplifies and streamlines our use of the Balena SDK and parts of the CLI.
 
+## Documentation
+The documentation is generated using pdoc and can be found [here](https://smart-vision-works.github.io/balena_tools/).
+
 ## Features
 * Uses a configurable on-disk cache (BalenaMongoCache) to store the balena data to speed up the use of the balena SDK. The first calls will take awhile but all subsequent calls will be fast. All calls have the option to bypass the cache.
 * Uses MontyDB as the cache, which allows us to search the balena data using mongo queries. More than 90% of other balena wrappers were functions to filter the API data in different ways. This greatly simplifies the interface

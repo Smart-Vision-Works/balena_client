@@ -1,3 +1,29 @@
+'''
+BalenaClient is a class that wraps the Balena SDK and BalenaMongoCache to provide a more user-friendly interface to the Balena API.
+
+The BalenaMongoCache is a class that caches data from the Balena API to avoid making unnecessary API calls. The cached data is stored in a local MongoDB database using montydb.
+
+The BalenaClient class requires an authentication token to be set in the BALENA_AUTH_TOKEN environment variable or in a .balena/token file in the user's home directory (this is what is generated with `balena login`).
+
+When adding additional methods to the BalenaClient class, used the cached data from BalenaMongoCache to avoid making unnecessary API calls, where it makes sense to do so.
+
+## Example code
+
+```python
+    
+client = BalenaClient(1000)
+
+query = {"device_name":{"$regex": "SVW-CB.*"}}
+projection = {"device_name": 1, "uuid": 1, "is_online": 1, "device_tags": 1}
+devices = client.get_devices(query, projection)
+
+applications = client.get_applications({"app_name": "Tater_SAI"}, {"app_name": 1, "id": 1, "uuid": 1})
+
+releases = client.get_releases(fleet="FM_HUB_K1", query={"release_tags.version": "v1.0.10"})
+```
+
+'''
+
 from pathlib import Path
 import json
 from .balena_mongo_cache import BalenaMongoCache
@@ -7,30 +33,8 @@ from balena import Balena
 import os
 import re
 
-'''
-BalenaClient is a class that wraps the Balena SDK and BalenaMongoCache to provide a more user-friendly interface to the Balena API.
-
-The BalenaClient class provides the following methods:
-- get_devices: Retrieve balena devices with optional filtering.
-- get_releases: Retrieve balena releases with optional filtering.
-- get_applications: Retrieve balena applications with optional filtering.
-- enable_public_url: Enable public URLs for devices.
-- disable_public_url: Disable public URLs for devices.
-- reboot_devices: Reboot devices.
-- update_device_to_release: Update devices to a specific release.
-- is_device_updated: Check if a device is updated to a specific release.
-- preload_devices: Preload devices from balena API.
-- preload_applications: Preload applications from balena API.
-- preload_releases: Preload releases from balena API.
-
-The BalenaClient class requires an authentication token to be set in the BALENA_AUTH_TOKEN environment variable or in a .balena/token file in the user's home directory.
-
-When adding additional methods to the BalenaClient class, used the cached data from BalenaMongoCache to avoid making unnecessary API calls, where it makes sense to do so.
-
-'''
-
 def auth_token():
-    """Load the Balena Auth Token from environment or file."""
+    """Load the Balena Auth Token from environment or file and returns it. Can be used outside of BalenaClient."""
     token = os.getenv('BALENA_AUTH_TOKEN')
     if token:
         return token
@@ -42,17 +46,23 @@ def auth_token():
     return None
 
 class BalenaClient:
-    def __init__(self, cache_duration_seconds=3600):
+    def __init__(self, cache_duration_seconds:int=3600):
+        '''
+        Initialize the BalenaClient.
+
+        :param cache_duration_seconds (int): The duration in seconds for which to cache data from the Balena API.
+        The default is 3600 seconds (1 hour).
+        '''
         # Load environment variables from .env file if it exists
-        self.setup_balena_client()
-        self.mongo_cache = BalenaMongoCache(self.balena, cache_duration_seconds)
+        self._setup_balena_client()
+        self._mongo_cache = BalenaMongoCache(self.balena, cache_duration_seconds)
 
     @property
     def auth_token(self):
-        """Expose the auth token."""
+        """Expose the auth token outside of BalenaClient."""
         return self._auth_token
 
-    def setup_balena_client(self):
+    def _setup_balena_client(self):
         # Set up the Balena client
         self.balena = Balena({
             "api_version": "v7",
@@ -69,21 +79,28 @@ class BalenaClient:
 
 
     def preload_devices(self):
-        ''' Preload devices from balena API '''
-        self.mongo_cache.refresh_data('devices')
+        ''' Preload devices from balena API. Helpful if you want to avoid the delay of the first API call and have time before you need the data. '''
+        print('Preloading devices from balena API...')
+        self._mongo_cache.refresh_data('devices')
 
     def preload_applications(self):
-        ''' Preload applications from balena API '''
-        self.mongo_cache.refresh_data('applications')
+        ''' Preload applications from balena API. Helpful if you want to avoid the delay of the first API call and have time before you need the data. '''
+        self._mongo_cache.refresh_data('applications')
 
     def preload_releases(self, fleet:str):
-        ''' Preload releases from balena API '''
-        self.mongo_cache.refresh_data('releases', fleet)
+        ''' Preload releases from balena API. Helpful if you want to avoid the delay of the first API call and have time before you need the data. '''
+        self._mongo_cache.refresh_data('releases', fleet)
         
     def get_devices(self, query: Dict[str, Any], projection={}, bypass_cache=False):
-        """Retrieve balena devices with optional filtering.
+        """
+        Retrieve balena devices with optional filtering.
 
-        Sample device document:
+        :param query (Dict[str, Any]): A mongo query to filter the devices.
+        :param projection (Dict[str, Any]): A mongo projection to shape the returned data.
+        :param bypass_cache (bool): If True, bypass the cache and retrieve the data from the Balena API.
+
+        ### Sample device document:
+        ```json
         {
             "id": 6984936,
             "belongs_to__application": {
@@ -154,17 +171,21 @@ class BalenaClient:
                 "Plant": "Rupert"
             }
         }
-
-          },
+        ```
         """
-        devices = self.mongo_cache.find('devices', query, projection, bypass_cache=bypass_cache)
+        devices = self._mongo_cache.find('devices', query, projection, bypass_cache=bypass_cache)
         return devices
 
     def get_releases(self, fleet, query: Dict[str, Any], projection={}, bypass_cache=False):
         ''' Retrieve balena releases with optional filtering.
-        Because the API can be slow for getting all releases you are required to pass a fleet eg (fm_sai, tater_sai).
+        Because the API can be slow for getting all releases you are required to pass a fleet(e.g. fm_sai, tater_sai).
 
-        Sample release document:
+        :param fleet (str): The fleet to get releases for.
+        :param query (Dict[str, Any]): A mongo query to filter the releases.
+        :param projection (Dict[str, Any]): A mongo projection to shape the returned data.
+
+        ### Sample release document:
+        ```json
         {
             "id": 1469485,
             "commit": "bf95b87d4db2f6e17bbbe35b4fd3a10b",
@@ -185,18 +206,23 @@ class BalenaClient:
                 "version": "v1.0.10"
             }
         }
+        ```
         '''
 
-        releases = self.mongo_cache.find('releases', query, projection, bypass_cache=bypass_cache, fleet=fleet)
+        releases = self._mongo_cache.find('releases', query, projection, bypass_cache=bypass_cache, fleet=fleet)
         return releases
 
     def get_applications(self, query: Dict[str, Any], projection={}, bypass_cache=False):
         ''' Retrieve balena applications with optional filtering.
 
         Filtering is a mongo query and projection. For example, to filter by application name:
-        mongo_query = {"app_name": "Tater_SAI"}
+        `mongo_query = {"app_name": "Tater_SAI"}`
 
-        Sample application document:
+        :param query (Dict[str, Any]): A mongo query to filter the applications.
+        :param projection (Dict[str, Any]): A mongo projection to shape the returned data.
+
+        ### Sample application document:
+        ```json
         {
         	"actor": 7341999,
         	"app_name": "camera_forwarding_sai",
@@ -217,21 +243,35 @@ class BalenaClient:
         	"slug": "admin53/camera_forwarding_sai",
         	"uuid": "44f78cb985994c09a954442cf23b48fa"
         }
+        ```
         '''
-        applications = self.mongo_cache.find('applications', query, projection, bypass_cache=bypass_cache)
+        applications = self._mongo_cache.find('applications', query, projection, bypass_cache=bypass_cache)
         return applications
 
     def enable_public_url(self, device_uuids: list):
+        '''
+        Enable public URLs for devices.
+
+        :param device_uuids (list): A list of device uuids to enable public URLs for.
+        '''
         for uuid in device_uuids:
             self.balena.models.device.enable_device_url(uuid)
 
     def disable_public_url(self, device_uuids: list):
+        '''
+        Disable public URLs for devices.
+
+        :param device_uuids (list): A list of device uuids to disable public URLs for.
+        '''
         for uuid in device_uuids:
             self.balena.models.device.disable_device_url(uuid)
 
     def reboot_devices(self, device_uuids: list):
-        ''' Reboot devices by their uuids.
-        Is possible that the device won't remote if the update lock is on.
+        '''
+        Reboot devices by their uuids.
+        Is possible that the device won't reboot if the update lock is on.
+
+        :param device_uuids (list): A list of device uuids to reboot.
         '''
         for uuid in device_uuids:
             self.balena.models.device.reboot(uuid)
@@ -259,7 +299,8 @@ class BalenaClient:
     def update_device_to_release(self, device_uuid: str, release_identifier: str):
         ''' Update devices to a specific release.
 
-        Can specify the release by commit, id, or version, where version comes from the release tags.
+        :param device_uuid (str): The uuid of the device to update.
+        :param release_identifier (str): The release to update the device to, can be specified by commit, id, or version (e.g. v1.0.10).
         '''
         # Get fleet from the device so we can get the release_id from the release_identifier
         application_id = self.get_devices({"uuid": device_uuid}, {"belongs_to__application.__id": 1})[0]['belongs_to__application']['__id']
@@ -291,7 +332,11 @@ class BalenaClient:
             return False, response.json()
 
     def is_device_updated(self, device_uuid: str, release_identifier: str):
-        ''' Check if a device is updated to a specific release. '''
+        ''' Check if a device is updated to a specific release.
+
+        :param device_uuid (str): The uuid of the device to check.
+        :param release_identifier (str): The release to check if the device is updated to, can be specified by commit, id, or version (e.g. v1.0.10).
+        '''
         # Get fleet from the device so we can get the release_id from the release_identifier
         application_id = self.get_devices({"uuid": device_uuid}, {"belongs_to__application.__id": 1})[0]['belongs_to__application']['__id']
         fleet = self.get_applications({"id": application_id}, {"app_name": 1})[0]['app_name']
@@ -303,7 +348,10 @@ class BalenaClient:
         return device['is_running__release']['__id'] == int(release_id)
 
     def is_device_in_local_mode(self, device_uuid_or_id: str):
-        ''' Check if a device is in local mode '''
+        ''' Checks if a device is in local mode
+
+        :param device_uuid_or_id (str): The uuid or id of the device to check.
+        '''
         return self.balena.models.device.is_in_local_mode(device_uuid_or_id)
 
 

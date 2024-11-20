@@ -1,3 +1,21 @@
+'''
+This module contains a class to open a tunnel to a balena device and interact with it. It uses the balena CLI command `balena device tunnel`.
+
+It will automatically find a free port on the local machine to listen on.
+
+If used with a context manager, it will automatically open and close the tunnel when the context manager block is left.
+```python
+from balena_tools import BalenaTunnel
+
+with BalenaTunnel(uuid, remote_port=27017) as tunnel:
+    # The tunnel is now open and available for use
+    print(f"Tunnel is active on port {tunnel.local_port}.")
+    # Perform any operations here that need the tunnel
+    time.sleep(5)
+# Tunnel automatically closed after the 'with' block
+```
+'''
+
 import subprocess
 import time
 import socket
@@ -10,10 +28,11 @@ class BalenaTunnel:
         :param uuid: UUID of the balena device.
         :param remote_port: Remote port to tunnel to.
         """
-        self.uuid = uuid
-        self.remote_port = remote_port
+        self._uuid = uuid
+        self._remote_port = remote_port
+        self._process = None
         self.local_port = self._find_free_port()
-        self.process = None
+        ''' The local port that the tunnel is listening on '''
 
     def _find_free_port(self):
         """
@@ -30,23 +49,23 @@ class BalenaTunnel:
         """
         try:
             tunnel_command = [
-                "balena", "device", "tunnel", self.uuid,
-                "-p", f"{self.remote_port}:{self.local_port}"
+                "balena", "device", "tunnel", self._uuid,
+                "-p", f"{self._remote_port}:{self.local_port}"
             ]
             print(f"Starting tunnel with command: {' '.join(tunnel_command)}")
-            self.process = subprocess.Popen(tunnel_command, 
+            self._process = subprocess.Popen(tunnel_command, 
                                           stdout=subprocess.PIPE, 
                                           stderr=subprocess.PIPE)
             
             # Wait for tunnel to be established and verify it's running
             for _ in range(10):  # Try for up to 10 seconds
                 time.sleep(1)
-                if self.process.poll() is not None:  # Process has terminated
-                    stdout, stderr = self.process.communicate()
-                    print(f"Tunnel failed to establish. Exit code: {self.process.returncode}")
+                if self._process.poll() is not None:  # Process has terminated
+                    stdout, stderr = self._process.communicate()
+                    print(f"Tunnel failed to establish. Exit code: {self._process.returncode}")
                     print(f"stdout: {stdout.decode() if stdout else ''}")
                     print(f"stderr: {stderr.decode() if stderr else ''}")
-                    self.process = None
+                    self._process = None
                     break
                 # Check if tunnel is actually listening
                 try:
@@ -59,23 +78,23 @@ class BalenaTunnel:
                 except Exception as e:
                     print(f"Error checking port: {e}")
                     
-            if self.process and self.process.poll() is None:
+            if self._process and self._process.poll() is None:
                 print("Balena tunnel established.")
             else:
                 print("Failed to establish tunnel within timeout period")
-                self.process = None
+                self._process = None
                 
         except Exception as e:
             print(f"Failed to open balena tunnel: {e}")
-            self.process = None
+            self._process = None
 
     def close(self):
         """
         Closes the tunnel by terminating the process.
         """
-        if self.process:
-            self.process.terminate()
-            self.process.wait()
+        if self._process:
+            self._process.terminate()
+            self._process.wait()
             print("Balena tunnel closed.")
         else:
             print("No active balena tunnel to close.")

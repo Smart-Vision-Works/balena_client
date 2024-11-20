@@ -122,6 +122,7 @@ class BalenaMongoCache:
 
 
     def refresh_data(self, collection: str, fleet:str=None):
+        print(f'Refreshing {collection} collection...')
         match collection:
             case "devices":
                 self._refresh_devices()

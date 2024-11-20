@@ -12,7 +12,7 @@ def mock_cache():
 def balena_client(mock_cache):
     """Fixture to create a BalenaClient instance with a mocked cache."""
     client = BalenaClient()
-    client.mongo_cache = mock_cache
+    client._mongo_cache = mock_cache
     return client
 
 @pytest.fixture

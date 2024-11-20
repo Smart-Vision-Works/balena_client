@@ -147,3 +147,9 @@ The scripts uses secrets for accessing balena. For development use a
 ```
 BALENA_AUTH_TOKEN=GarbageymkUdhgjGo32C2WBlUXfwdno0C
 ```
+
+## Update pdoc documentation
+To update the pdoc documentation, run the following command:
+```bash
+pdm run pdoc src/balena_tools/balena_client.py src/balena_tools/balena_tunnel.py -o docs
+```

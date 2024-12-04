@@ -52,7 +52,6 @@ class BalenaTunnel:
                 "balena", "device", "tunnel", self._uuid,
                 "-p", f"{self._remote_port}:{self.local_port}"
             ]
-            print(f"Starting tunnel with command: {' '.join(tunnel_command)}")
             self._process = subprocess.Popen(tunnel_command, 
                                           stdout=subprocess.PIPE, 
                                           stderr=subprocess.PIPE)
@@ -73,13 +72,12 @@ class BalenaTunnel:
                                           capture_output=True, 
                                           text=True)
                     if 'LISTEN' in result.stdout:
-                        print(f"Tunnel established and listening on port {self.local_port}")
                         return
                 except Exception as e:
                     print(f"Error checking port: {e}")
                     
             if self._process and self._process.poll() is None:
-                print("Balena tunnel established.")
+                pass
             else:
                 print("Failed to establish tunnel within timeout period")
                 self._process = None
@@ -95,7 +93,6 @@ class BalenaTunnel:
         if self._process:
             self._process.terminate()
             self._process.wait()
-            print("Balena tunnel closed.")
         else:
             print("No active balena tunnel to close.")
 

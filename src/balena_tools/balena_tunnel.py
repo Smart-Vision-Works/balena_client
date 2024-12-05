@@ -43,6 +43,12 @@ class BalenaTunnel:
             s.listen(1)
             return s.getsockname()[1]
 
+    def is_open(self):
+        """
+        Check if the tunnel is open.
+        """
+        return self._process is not None
+
     def open(self):
         """
         Opens a tunnel to the specified balena device.

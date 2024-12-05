@@ -6,12 +6,19 @@ It will automatically find a free port on the local machine to listen on.
 If used with a context manager, it will automatically open and close the tunnel when the context manager block is left.
 ```python
 from balena_tools import BalenaTunnel
+import logging
 
+logging.basicConfig(level=logging.INFO)  # Configure logging level
+uuid = "your_device_uuid_here"
+
+# Using the class with a context manager
 with BalenaTunnel(uuid, remote_port=27017) as tunnel:
-    # The tunnel is now open and available for use
-    print(f"Tunnel is active on port {tunnel.local_port}.")
-    # Perform any operations here that need the tunnel
-    time.sleep(5)
+    if tunnel.is_open():
+        logging.info("Tunnel is active. You can now interact with the device.")
+        # Perform any operations here that need the tunnel
+        time.sleep(5)  # Simulate some work being done with the tunnel
+    else:
+        logging.error("Failed to open tunnel.")
 # Tunnel automatically closed after the 'with' block
 ```
 '''
@@ -19,6 +26,7 @@ with BalenaTunnel(uuid, remote_port=27017) as tunnel:
 import subprocess
 import time
 import socket
+import logging
 
 class BalenaTunnel:
     def __init__(self, uuid, remote_port=27017):
@@ -33,6 +41,7 @@ class BalenaTunnel:
         self._process = None
         self.local_port = self._find_free_port()
         ''' The local port that the tunnel is listening on '''
+        self.logger = logging.getLogger(__name__)
 
     def _find_free_port(self):
         """
@@ -67,9 +76,11 @@ class BalenaTunnel:
                 time.sleep(1)
                 if self._process.poll() is not None:  # Process has terminated
                     stdout, stderr = self._process.communicate()
-                    print(f"Tunnel failed to establish. Exit code: {self._process.returncode}")
-                    print(f"stdout: {stdout.decode() if stdout else ''}")
-                    print(f"stderr: {stderr.decode() if stderr else ''}")
+                    self.logger.error(
+                        f"Tunnel failed to establish. Exit code: {self._process.returncode}\n"
+                        f"stdout: {stdout.decode() if stdout else ''}\n"
+                        f"stderr: {stderr.decode() if stderr else ''}"
+                    )
                     self._process = None
                     break
                 # Check if tunnel is actually listening
@@ -80,16 +91,16 @@ class BalenaTunnel:
                     if 'LISTEN' in result.stdout:
                         return
                 except Exception as e:
-                    print(f"Error checking port: {e}")
+                    self.logger.error(f"Error checking port: {e}")
                     
             if self._process and self._process.poll() is None:
                 pass
             else:
-                print("Failed to establish tunnel within timeout period")
+                self.logger.error("Failed to establish tunnel within timeout period")
                 self._process = None
                 
         except Exception as e:
-            print(f"Failed to open balena tunnel: {e}")
+            self.logger.error(f"Failed to open balena tunnel: {e}")
             self._process = None
 
     def close(self):
@@ -100,7 +111,7 @@ class BalenaTunnel:
             self._process.terminate()
             self._process.wait()
         else:
-            print("No active balena tunnel to close.")
+            self.logger.warning("No active balena tunnel to close.")
 
     def __enter__(self):
         """
@@ -117,12 +128,15 @@ class BalenaTunnel:
 
 # Example usage
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)  # Configure logging level
     uuid = "your_device_uuid_here"
     
     # Using the class with a context manager
     with BalenaTunnel(uuid) as tunnel:
-        # The tunnel is now open and available for use
-        print("Tunnel is active. You can now interact with the device.")
-        # Perform any operations here that need the tunnel
-        time.sleep(5)  # Simulate some work being done with the tunnel
-    # Tunnel automatically closed after the 'with' block
+        if tunnel.is_open():
+            logging.info("Tunnel is active. You can now interact with the device.")
+            # Perform any operations here that need the tunnel
+            time.sleep(5)  # Simulate some work being done with the tunnel
+        else:
+            logging.error("Failed to open tunnel.")
+# Tunnel automatically closed after the 'with' block
